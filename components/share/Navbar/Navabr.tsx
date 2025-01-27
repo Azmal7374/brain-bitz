@@ -31,7 +31,7 @@ const Navbar = () => {
                 3
               </span>
             </button>
-            {["Work", "School", "Higher Education", "Study", "Quiz"].map((link) => (
+            {["Work", "School", "Higher Education", "Lobby", "Quiz"].map((link) => (
               <Link
                 key={link}
                 href={`/${link.toLowerCase()}`}  // Adjusted to dynamically route based on link name

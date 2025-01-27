@@ -1,7 +1,9 @@
+/* eslint-disable padding-line-between-statements */
+/* eslint-disable prettier/prettier */
 import React, { useState, useEffect } from "react";
 import { io } from "socket.io-client";
 
-const clientSocket = io("http://localhost:5000"); // Your server URL
+const clientSocket = io("http://localhost:5000"); // Replace with your server URL
 
 interface ChatProps {
   userName: string;
@@ -13,9 +15,8 @@ const Chat: React.FC<ChatProps> = ({ userName, roomId }) => {
   const [messages, setMessages] = useState<{ user: string; text: string; time: string }[]>([]);
   const [userJoinTime, setUserJoinTime] = useState<string>("");
 
-  // To handle joining the room and receiving messages
   useEffect(() => {
-    if (!userName || !roomId) return; // Ensure userName and roomId are not empty
+    if (!userName || !roomId) return;
 
     const currentTime = new Date().toLocaleTimeString();
     setUserJoinTime(currentTime);
@@ -23,25 +24,34 @@ const Chat: React.FC<ChatProps> = ({ userName, roomId }) => {
     // Emit user join event with the username and room code
     clientSocket.emit("joinRoom", { userName, roomCode: roomId });
 
-    // Listen for user join and left events
+    let hasUserJoined = false; // Flag to track join message
+    let hasUserLeft = false; // Flag to track leave message
+
+    // Listen for user join events
     clientSocket.on("userJoined", ({ userName, action }) => {
-      const message = `${userName} ${action} the room.`;
-      setMessages((prev) => [...prev, { user: "System", text: message, time: currentTime }]);
+      if (!hasUserJoined) {
+        const message = `${userName} ${action} the room.`;
+        setMessages((prev) => [...prev, { user: "System", text: message, time: currentTime }]);
+        hasUserJoined = true;
+      }
     });
 
+    // Listen for user left events
     clientSocket.on("userLeft", ({ userName, action }) => {
-      const message = `${userName} ${action} the room.`;
-      setMessages((prev) => [...prev, { user: "System", text: message, time: currentTime }]);
+      if (!hasUserLeft) {
+        const message = `${userName} ${action} the room.`;
+        setMessages((prev) => [...prev, { user: "System", text: message, time: currentTime }]);
+        hasUserLeft = true;
+      }
     });
 
-    // Listen for new messages (but only display those from others)
+    // Listen for new messages
     clientSocket.on("newMessage", (msg) => {
-      if (msg.user !== userName) { // Avoid showing the user's own message in the message list
+      if (msg.user !== userName) {
         setMessages((prev) => [...prev, { ...msg, time: currentTime }]);
       }
     });
 
-    // Cleanup when the component unmounts
     return () => {
       clientSocket.emit("leaveRoom", { roomCode: roomId, userName });
       clientSocket.off("userJoined");
@@ -56,15 +66,11 @@ const Chat: React.FC<ChatProps> = ({ userName, roomId }) => {
     const currentTime = new Date().toLocaleTimeString();
     const newMessage = { user: userName, text: message, roomId, time: currentTime };
 
-    // Emit the message to the server
     clientSocket.emit("chatMessage", newMessage);
-
-    // Update the local state to display the message (but avoid duplication)
     setMessages((prev) => [...prev, newMessage]);
-    setMessage(""); // Clear the input field
+    setMessage("");
   };
 
-  // Handle Enter key press
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       sendMessage();
@@ -72,31 +78,35 @@ const Chat: React.FC<ChatProps> = ({ userName, roomId }) => {
   };
 
   return (
-    <div>
-      <div style={{ height: "300px", overflowY: "scroll", border: "1px solid black", padding: "10px", marginBottom: "10px" }}>
-        {userJoinTime && (
-          <p>
-            <strong style={{ color: "green" }}>
-              {userName} joined the room at {userJoinTime}
-            </strong>
-          </p>
-        )}
+    <div className="w-full bg-white  rounded-lg space-y-4">
+      
+      <div className="h-64 overflow-y-auto p-4  rounded-md border border-gray-300 shadow-inner space-y-3">
         {messages.map((msg, index) => (
-          <p key={index} style={{ color: msg.user === userName ? "blue" : "black", fontWeight: msg.user === userName ? "bold" : "normal" }}>
-            <strong>{msg.user}</strong>: {msg.text} <span style={{ fontSize: "0.8rem", color: "gray" }}>({msg.time})</span>
-          </p>
+          <div key={index} className={`flex ${msg.user === userName ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-xs p-2 rounded-lg ${msg.user === userName ? "bg-blue-500 text-white" : "bg-gray-200 text-black"}`}>
+              <strong>{msg.user}</strong>: {msg.text}
+              <span className="block text-xs ">{msg.time}</span>
+            </div>
+          </div>
         ))}
       </div>
 
-      <input
-        type="text"
-        placeholder="Message"
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        onKeyDown={handleKeyDown} // Handle Enter key press
-        style={{ width: "80%" }}
-      />
-      <button onClick={sendMessage} style={{ marginLeft: "10px" }}>Send</button>
+      <div className="flex items-center space-x-4">
+        <input
+          type="text"
+          placeholder="Type your message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          onKeyDown={handleKeyDown}
+          className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <button
+          onClick={sendMessage}
+          className="bg-blue-500 text-white p-2 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          Send
+        </button>
+      </div>
     </div>
   );
 };

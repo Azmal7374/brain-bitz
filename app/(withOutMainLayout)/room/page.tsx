@@ -1,3 +1,5 @@
+/* eslint-disable react/jsx-sort-props */
+/* eslint-disable prettier/prettier */
 "use client";
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -5,6 +7,7 @@ import axios from "axios";
 import Chat from "@/components/Room/Chat";
 import { Button } from "@heroui/button";
 import QRCode from "react-qr-code";
+import Link from "next/link";
 
 const RoomPage: React.FC = () => {
   const searchParams = useSearchParams();
@@ -21,6 +24,7 @@ const RoomPage: React.FC = () => {
   const [userAnswers, setUserAnswers] = useState<any[]>([]);
   const [correctAnswersCount, setCorrectAnswersCount] = useState<number>(0);
   const [currentUser, setCurrentUser] = useState<string>("");
+  const [answerSelected, setAnswerSelected] = useState<boolean>(false); // New state
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -83,6 +87,7 @@ const RoomPage: React.FC = () => {
       setCurrentQuestionIndex(0);
       setUserAnswers([]);
       setCorrectAnswersCount(0);
+      setAnswerSelected(false); // Reset answer selection when quiz starts
       startTimer(room?.timer || room.questions[currentQuestionIndex]?.timeLimit);
     }
   };
@@ -96,12 +101,13 @@ const RoomPage: React.FC = () => {
     if (answer === correctAnswer) {
       setCorrectAnswersCount(correctAnswersCount + 1);
     }
-    handleNextQuestion();
+    setAnswerSelected(true); // Enable "Lock In" after selecting an answer
   };
 
   const handleNextQuestion = () => {
     if (currentQuestionIndex < room?.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setAnswerSelected(false); // Reset "Lock In" state for the next question
       startTimer(room?.questions[currentQuestionIndex + 1]?.timeLimit);
     } else {
       setQuizEnded(true);
@@ -116,7 +122,13 @@ const RoomPage: React.FC = () => {
     setTimeLeft(room?.timer || 0);
     setUserAnswers([]);
     setCorrectAnswersCount(0);
+    setAnswerSelected(false); // Reset the answer selected state
     if (intervalId) clearInterval(intervalId);
+
+    // Automatically start the quiz after resetting
+    setQuizStarted(true);
+    setTimeLeft(room?.timer || room.questions[currentQuestionIndex]?.timeLimit);
+    startTimer(room?.timer || room.questions[currentQuestionIndex]?.timeLimit);
   };
 
   if (loading) {
@@ -139,11 +151,13 @@ const RoomPage: React.FC = () => {
     <div className="px-6 py-8 max-w-7xl mx-auto">
       <div className="flex justify-between items-start gap-6 flex-wrap mb-6">
         <div>
+          <Link href="/">
           <h1 className="text-3xl font-semibold text-gray-800">Quiz Room: {roomId}</h1>
-          <h2 className="text-xl font-semibold text-gray-600">Welcome {username || "Player"}!</h2>
+          </Link>
+          <h2 className="text-xl font-semibold text-gray-600">Welcome, {username || "Player"}!</h2>
         </div>
         <div className="flex flex-col items-center">
-          <QRCode value={`http://localhost:3000/room?roomId=${roomId}`} size={160} />
+          <QRCode value={`http://localhost:3000/room?roomId=${roomId}`} size={120} />
           <p className="text-sm mt-2 text-gray-500">Scan to Join</p>
         </div>
         <div>
@@ -156,9 +170,9 @@ const RoomPage: React.FC = () => {
         </div>
       </div>
 
-      <div className="w-full bg-white rounded-lg shadow-lg p-6">
+      <div className="w-full bg-white rounded-lg p-6 border-2 h-[450px] md:h-[420px]">
         {!quizStarted && (
-          <div className="mt-6 text-center">
+          <div className="mt-6">
             <Button
               onClick={handleStartQuiz}
               className="w-40 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition duration-300"
@@ -170,7 +184,7 @@ const RoomPage: React.FC = () => {
 
         {quizStarted && !quizEnded && room?.questions && room.questions.length > 0 && (
           <div>
-            <p className="mt-2 text-center text-lg font-medium">Time Left: {timeLeft} সেকেন্ড</p>
+            <p className="mt-2 text-center text-lg font-medium">Time Left: {timeLeft} s</p>
             <h3 className="text-lg font-semibold mt-4">
               Question {currentQuestionIndex + 1}: {room.questions[currentQuestionIndex]?.question}
             </h3>
@@ -185,17 +199,31 @@ const RoomPage: React.FC = () => {
                 </Button>
               ))}
             </div>
+            <div className="mt-4 text-center">
+              <Button
+                onClick={() => handleNextQuestion()}
+                disabled={!answerSelected} // Disable "Lock In" until an answer is selected
+                className={`w-40 py-2 ${
+                  answerSelected ? "bg-blue-600 hover:bg-blue-700" : "bg-gray-400 cursor-not-allowed"
+                } text-white rounded-lg transition duration-300`}
+              >
+                Lock In
+              </Button>
+            </div>
           </div>
         )}
 
         {quizEnded && (
-          <div className="mt-4 text-center">
-            <h3 className="text-lg font-medium text-green-600">
-              Quiz Ended! Correct Answers: {correctAnswersCount}
+          <div className="mt-4">
+            <h3 className="text-2xl md:text-3xl font-medium text-green-600 text-center">
+              Quiz Ended!
+            </h3>
+            <h3 className="text-xl md:text-2xl font-medium text-green-600 text-center">
+              Correct Answers: {correctAnswersCount}
             </h3>
             <Button
               onClick={handleResetQuiz}
-              className="w-40 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-300"
+              className="w-40 bg-green-600 text-white rounded-lg hover:bg-green-700 transition duration-300"
             >
               Reset Room
             </Button>

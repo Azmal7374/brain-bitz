@@ -2,7 +2,7 @@
 /* eslint-disable prettier/prettier */
 "use client"
 import React, { useEffect, useState } from "react";
-
+import { motion } from 'framer-motion';
 interface QuizProps {
   quizCategory: string[];
 }
@@ -124,70 +124,107 @@ const Quiz: React.FC<QuizProps> = ({ quizCategory }) => {
   }
 
   return (
-    <div className="p-4 max-w-lg mx-auto bg-gray-100 rounded-md shadow-md">
-      {!showResult && (
-        <div className="mt-2 text-center text-red-500">Time Left: {timer}s</div>
+    <div className="p-6 max-w-lg mx-auto bg-gray-100 rounded-md shadow-md space-y-6">
+  {/* Timer */}
+  {!showResult && (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="mt-2 text-center text-red-500 text-lg font-semibold"
+    >
+      Time Left: {timer}s
+    </motion.div>
+  )}
+
+  {/* Quiz Result or Question */}
+  {showResult ? (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="text-center"
+    >
+      <h2 className="text-3xl font-bold text-green-600">Quiz Completed!</h2>
+      <p className="text-xl mt-2">
+        Your Score: <span className="font-semibold">{score}</span> / {quizzes.length}
+      </p>
+      {quizCompleted && (
+        <button
+          onClick={handleResetRoom}
+          className="mt-6 px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200"
+        >
+          Reset Room
+        </button>
       )}
-      {/* <h1 className="text-xl font-bold mb-4 text-center">
-        Quiz: {quizCategory}
-      </h1> */}
-      {showResult ? (
-        <div className="text-center">
-          <h2 className="text-2xl font-bold">Quiz Completed!</h2>
-          <p className="text-lg">
-            Your Score: {score} / {quizzes.length}
-          </p>
-          {quizCompleted && (
-            <button
-              onClick={handleResetRoom}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-            >
-              Reset Room
-            </button>
-          )}
-        </div>
-      ) : (
-        <div>
-          <div className="mb-4">
-            <h2 className="text-lg font-bold">
-              {quizzes[currentQuestion].question}
-            </h2>
-            <div className="mt-2">
-              {quizzes[currentQuestion].options.map((option) => (
-                <label
-                  key={option}
-                  className={`block p-2 border rounded-md cursor-pointer mb-2 ${
-                    selectedOption === option
-                      ? "bg-blue-100 border-blue-400"
-                      : "hover:bg-gray-100"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="quiz-option"
-                    value={option}
-                    checked={selectedOption === option}
-                    onChange={() => setSelectedOption(option)}
-                    className="mr-2"
-                  />
-                  {option}
-                </label>
-              ))}
-            </div>
-          </div>
-          <button
-            onClick={handleLockIn}
-            disabled={!selectedOption}
-            className="w-full px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+    </motion.div>
+  ) : (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Question */}
+      <motion.div
+        initial={{ y: 50, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="mb-4 text-center"
+      >
+        <h2 className="text-2xl font-semibold">{quizzes[currentQuestion].question}</h2>
+      </motion.div>
+
+      {/* Options */}
+      <div className="space-y-4">
+        {quizzes[currentQuestion].options.map((option) => (
+          <motion.label
+            key={option}
+            className={`block p-4 border rounded-md cursor-pointer ${
+              selectedOption === option
+                ? "bg-blue-100 border-blue-400"
+                : "hover:bg-gray-100"
+            }`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
           >
-            Lock In
-          </button>
-          <div className="mt-4 text-center text-gray-600">
-            Question {currentQuestion + 1} of {quizzes.length}
-          </div>
-        </div>
-      )}
-    </div>
+            <input
+              type="radio"
+              name="quiz-option"
+              value={option}
+              checked={selectedOption === option}
+              onChange={() => setSelectedOption(option)}
+              className="mr-4"
+            />
+            {option}
+          </motion.label>
+        ))}
+      </div>
+
+      {/* Lock In Button */}
+      <motion.button
+        onClick={handleLockIn}
+        disabled={!selectedOption}
+        className="w-full px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition duration-200 disabled:opacity-50"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        Lock In
+      </motion.button>
+
+      {/* Question Counter */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.5 }}
+        className="mt-4 text-center text-gray-600"
+      >
+        Question {currentQuestion + 1} of {quizzes.length}
+      </motion.div>
+    </motion.div>
+  )}
+</div>
   );
 };
 

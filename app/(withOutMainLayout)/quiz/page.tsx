@@ -9,7 +9,7 @@
 /* eslint-disable unused-imports/no-unused-imports */
 /* eslint-disable prettier/prettier */
 "use client"
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios"; // For API calls
 import { AxiosError } from 'axios';
 import { Input } from "@heroui/input";
@@ -18,6 +18,7 @@ import { Button } from "@heroui/button";
 import { Card } from "@heroui/card";
 import { Checkbox, CheckboxGroup } from "@heroui/checkbox";
 import QRCode from "qrcode";
+import jsQR from "jsqr"; // Import jsQR to decode QR codes
 
 const Quiz: React.FC = () => {
   const [name, setName] = useState<string>(""); // Player's name
@@ -29,12 +30,13 @@ const Quiz: React.FC = () => {
   const [isScannerActive, setIsScannerActive] = useState<boolean>(false); // QR scanner activation state
   const [scannerError, setScannerError] = useState<string>(""); // Error for scanner
   const [fileUpload, setFileUpload] = useState<File | null>(null); // File upload for QR code image
+  const [scannerStream, setScannerStream] = useState<MediaStream | null>(null); // For handling webcam stream
 
   // Handle room creation
   const newRoomCode = Math.random().toString(36).substr(2, 6).toUpperCase();
   
   // Modify the room creation and join functionality to include the username in the URL
-const handleCreateRoom = async () => {
+  const handleCreateRoom = async () => {
     if (!name.trim()) {
       alert("Please enter your name before creating a room!");
       return;
@@ -68,7 +70,7 @@ const handleCreateRoom = async () => {
       alert("An unexpected error occurred. Please try again.");
     }
   };
-  
+
   const handleJoinRoom = async () => {
     if (!roomCode.trim()) {
       alert("Please enter a valid room code!");
@@ -92,16 +94,93 @@ const handleCreateRoom = async () => {
       alert("An error occurred while joining the room.");
     }
   };
-  
 
   // Handle QR code file upload
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files ? e.target.files[0] : null;
     if (file) {
       setFileUpload(file);
-      // Further process the uploaded QR code image (e.g., scan or decode it)
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.src = reader.result as string;
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const decoded = jsQR(imageData.data, canvas.width, canvas.height);
+            if (decoded) {
+              const url = new URL(decoded.data); // Create a URL object from the QR code data
+              const roomId = url.searchParams.get('roomId'); // Extract the roomId from the query params
+              if (roomId) {
+                console.log(roomId); // Log the roomId (optional)
+                setRoomCode(roomId); // Set only the roomId to state
+              }
+            }
+            else {
+              alert("No QR code detected in the image!");
+            }
+          }
+        };
+      };
+      reader.readAsDataURL(file);
     }
   };
+
+  // Handle QR code scanner
+  useEffect(() => {
+    const startScanner = async () => {
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: "environment" },
+        });
+        setScannerStream(stream);
+
+        const video = document.getElementById("qr-video") as HTMLVideoElement;
+        video.srcObject = stream;
+        video.play();
+
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        if (ctx && video) {
+          const scanQRCode = () => {
+            if (video.readyState === video.HAVE_ENOUGH_DATA) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+              const decoded = jsQR(imageData.data, canvas.width, canvas.height);
+              if (decoded) {
+                setRoomCode(decoded.data); // Extract room code from the QR code data
+              }
+            }
+            requestAnimationFrame(scanQRCode);
+          };
+          scanQRCode();
+        }
+      }
+    };
+
+    if (isScannerActive) {
+      startScanner();
+    } else {
+      if (scannerStream) {
+        const tracks = scannerStream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    }
+
+    return () => {
+      if (scannerStream) {
+        const tracks = scannerStream.getTracks();
+        tracks.forEach(track => track.stop());
+      }
+    };
+  }, [isScannerActive, scannerStream]);
 
   return (
     <div className="flex flex-col items-center p-4 space-y-8">
